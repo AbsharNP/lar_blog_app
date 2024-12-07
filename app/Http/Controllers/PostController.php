@@ -11,16 +11,23 @@ class PostController extends Controller
 {
     public function store(Request $request)
     {
+        // Validate the input
         $request->validate([
             'title' => 'required|string|max:100', 
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:20048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048', // Image is optional
             'description' => 'required|string|max:500', 
         ]);
-
+    
+        // Get the authenticated user
         $user = Auth::user();
-
-        $imagePath = $request->file('image')->store('posts', 'public');
-
+    
+        // Handle image upload if an image is provided
+        $imagePath = null; // Default to null
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('posts', 'public');
+        }
+    
+        // Insert the post into the database
         DB::table('posts')->insert([
             'user_id' => $user->id, 
             'name' => $user->name, 
@@ -29,17 +36,19 @@ class PostController extends Controller
             'date' => now(), 
             'title' => $request->title, 
             'content' => $request->description, 
-            'image' => $imagePath, 
+            'image' => $imagePath, // Null if no image uploaded
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-
+    
+        // Redirect with a success message
         return redirect()->route('dashboard')->with('success', 'Post created successfully!');
     }
+    
 
     public function index(Request $request)
     {
-        $query = Post::query();
+        $query = Post::query()->latest();
 
     if ($request->has('search') && $request->search) {
         $query->where('author', 'like', '%' . $request->search . '%');
